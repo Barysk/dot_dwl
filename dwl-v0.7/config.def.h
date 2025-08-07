@@ -8,8 +8,8 @@ static const int sloppyfocus               = 1;  /* focus follows mouse */
 static const int bypass_surface_visibility = 0;  /* 1 means idle inhibitors will disable idle tracking even if it's surface isn't visible  */
 static const int smartgaps                 = 0;  /* 1 means no outer gap when there is only one window */
 static int gaps                            = 1;  /* 1 means gaps between windows are added */
-static const unsigned int gappx            = 4;  /* gap pixel between windows */
-static const unsigned int borderpx         = 1;  /* border pixel of windows */
+static const unsigned int gappx            = 8;  /* gap pixel between windows */
+static const unsigned int borderpx         = 0;  /* border pixel of windows */
 static const float rootcolor[]             = COLOR(0x222222ff);
 static const float bordercolor[]           = COLOR(0x444444ff);
 static const float focuscolor[]            = COLOR(0x005577ff);
@@ -55,11 +55,13 @@ static const MonitorRule monrules[] = {
 
 /* keyboard */
 static const struct xkb_rule_names xkb_rules = {
+	.variant = "legacy,legacy",
+	.layout = "pl,by",
+	.options = "grp:lalt_lshift_toggle",
 	/* can specify fields: rules, model, layout, variant, options */
 	/* example:
 	.options = "ctrl:nocaps",
 	*/
-	.options = NULL,
 };
 
 static const int repeat_rate = 25;
@@ -177,7 +179,7 @@ static const Key keys[] = {
 
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_B,                     togglebar,        {0} },
 
-	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_g,                     togglegaps,       {0} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_plus,                  togglegaps,       {0} },
 
 	{ MODKEY,                    XKB_KEY_j,                     focusstack,       {.i = +1} },
 	{ MODKEY,                    XKB_KEY_k,                     focusstack,       {.i = -1} },
