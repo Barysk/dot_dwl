@@ -1,0 +1,64 @@
+#!/bin/sh
+
+##############
+### PORTAL ###
+##############
+
+export XDG_CURRENT_DESKTOP="dwl;wlroots"
+export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+
+
+##################
+### FLICKERING ###
+##################
+
+export ELECTRON_OZONE_PLATFORM_HINT="auto"
+export OZONE_PLATFORM_HINT="auto"
+
+
+##############
+### NVIDIA ###
+##############
+
+#export LIBVA_DRIVER_NAME="nvidia"
+#export __GLX_VENDOR_LIBRARY_NAME="nvidia"
+#export NVD_BACKEND="direct"
+
+#export __GL_VRR_ALLOWED="0"
+
+
+###############
+### TOOLKIT ###
+###############
+
+export GDK_BACKEND="wayland,x11,*"
+export QT_QPA_PLATFORM="wayland;xcb"
+export SDL_VIDEODRIVER="wayland"
+export CLUTTER_BACKEND="wayland"
+
+
+##########
+### QT ###
+##########
+
+export QT_AUTO_SCREEN_SCALE_FACTOR="1"
+export QT_QPA_PLATFORM="wayland;xcb"
+export QT_WAYLAND_DISABLE_WINDOWDECORATION="1"
+export QT_QPA_PLATFORMTHEME="qt5ct"
+export QT_STYLE_OVERRIDE="kvantum"
+
+
+###############
+### THEMING ###
+###############
+
+export XCURSOR_SIZE="24"
+export HYPRCURSOR_SIZE="24"
+export GTK_THEME="Materia-dark-compact"
+
+
+#############
+### RIVER ###
+#############
+
+exec dwl -s $HOME/.config/dwl_start/autostart

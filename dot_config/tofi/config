@@ -1,0 +1,21 @@
+anchor = top
+width = 100%
+height = 18
+horizontal = true
+font-size = 9
+font = /home/bk/.fonts/MPlus/Mplus2-Bold.ttf
+prompt-text = ""
+outline-width = 0
+border-width = 0
+background-color = #000000
+text-color = #707070
+selection-color = #FFFFFF
+num-results = 8
+min-input-width = 256
+result-spacing = 16
+padding-top = 0
+padding-bottom = 0
+padding-left = 0
+padding-right = 0
+hint-font = false
+

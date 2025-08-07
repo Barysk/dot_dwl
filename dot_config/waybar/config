@@ -1,0 +1,42 @@
+{
+	"layer": "bottom", // Waybar at top layer
+		"position": "top", // Waybar at the bottom of your screen
+		"start_hidden": false,
+		"height": 18,
+		"modules-left": ["dwl/tags"],
+		"modules-center": ["clock"],
+		"modules-right": ["tray", "bluetooth", "wireplumber", "battery", "custom/date-module"],
+		"dwl/tags": {
+			"tag-labels": [ "一","二","三","四","五","六","七","八","九"]
+		},
+		"tray": {
+			"icon-size": 12,
+			"spacing": 12,
+			"reverse-direction": true
+		},
+		"bluetooth": {
+			"format": "",
+			"format-on": "BTH",
+		},
+		"clock": {
+			"interval": 1,
+			"format": "{:%H:%M:%S}"
+		},
+		"wireplumber": {
+			"format": "Vol {volume}",
+			"format-muted": "VolX{volume}",
+		},
+		"battery": {
+			"states": {
+				"warning": 66,
+				"critical": 33
+			},
+			"format": "Bat {capacity}",
+		},
+		"custom/date-module": {
+			"interval": 15,
+			"exec": "$HOME/.config/waybar/modules/date",
+			"return-type": "text",
+			"tooltip": false
+		},
+}
