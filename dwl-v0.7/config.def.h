@@ -174,8 +174,10 @@ static const Key keys[] = {
 	{ MODKEY,                    XKB_KEY_Escape,                spawn,            {.v = lckscr} },
 	{ MODKEY|WLR_MODIFIER_ALT,   XKB_KEY_s,                     spawn,            {.v = scrshot} },
 
-	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_J,                     movestack,      {.i = +1} },
-	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_K,                     movestack,      {.i = -1} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_J,                     movestack,        {.i = +1} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_K,                     movestack,        {.i = -1} },
+
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_B,                     togglebar,        {0} },
 
 	{ MODKEY,                    XKB_KEY_j,                     focusstack,       {.i = +1} },
 	{ MODKEY,                    XKB_KEY_k,                     focusstack,       {.i = -1} },
@@ -190,7 +192,7 @@ static const Key keys[] = {
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_W,                     setlayout,        {.v = &layouts[1]} },
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_E,                     setlayout,        {.v = &layouts[2]} },
 	// { MODKEY,                    XKB_KEY_space,                 setlayout,        {0} },
-	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_f,                     togglefloating,   {0} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_F,                     togglefloating,   {0} },
 	{ MODKEY,                    XKB_KEY_f,                     togglefullscreen, {0} },
 	{ MODKEY,                    XKB_KEY_0,                     view,             {.ui = ~0} },
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_parenright,            tag,              {.ui = ~0} },
