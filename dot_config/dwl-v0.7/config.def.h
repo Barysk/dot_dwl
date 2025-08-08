@@ -146,7 +146,7 @@ static const char *mdnext[] = { "sh", "-c", "playerctl next", NULL };
 static const char *mdprev[] = { "sh", "-c", "playerctl previous", NULL };
 
 // misc
-static const char *lckscr[] = { "hyprlock", NULL }; // TODO: change to swaylock
+static const char *lckscr[] = { "swaylock", NULL };
 static const char *scrshot[] = { "sh", "-c", "hyprshot -z -s -m region -o ~/Pictures/screenshots/", NULL }; // TODO: replace with grim and slurp
 
 
@@ -159,13 +159,13 @@ static const Key keys[] = {
 	{ MODKEY,                    XKB_KEY_t,                     spawn,            {.v = msgcmd} },
 	{ MODKEY,                    XKB_KEY_b,                     spawn,            {.v = brwsrcmd} },
 
-	{ MODKEY,                    XKB_KEY_XF86AudioRaiseVolume,  spawn,            {.v = vlup} },
-	{ MODKEY,                    XKB_KEY_XF86AudioLowerVolume,  spawn,            {.v = vldown} },
-	{ MODKEY,                    XKB_KEY_XF86AudioMute,         spawn,            {.v = vlmute} },
-	{ MODKEY,                    XKB_KEY_XF86AudioMicMute,      spawn,            {.v = micmute} },
+	{ 0,                         XKB_KEY_XF86AudioRaiseVolume,  spawn,            {.v = vlup} },
+	{ 0,                         XKB_KEY_XF86AudioLowerVolume,  spawn,            {.v = vldown} },
+	{ 0,                         XKB_KEY_XF86AudioMute,         spawn,            {.v = vlmute} },
+	{ 0,                         XKB_KEY_XF86AudioMicMute,      spawn,            {.v = micmute} },
 
-	{ MODKEY,                    XKB_KEY_XF86MonBrightnessUp,   spawn,            {.v = brup} },
-	{ MODKEY,                    XKB_KEY_XF86MonBrightnessDown, spawn,            {.v = brdown} },
+	{ 0,                         XKB_KEY_XF86MonBrightnessUp,   spawn,            {.v = brup} },
+	{ 0,                         XKB_KEY_XF86MonBrightnessDown, spawn,            {.v = brdown} },
 
 	{ MODKEY,                    XKB_KEY_space,                 spawn,            {.v = mdpause} },
 	{ MODKEY,                    XKB_KEY_Right,                 spawn,            {.v = mdnext} },
