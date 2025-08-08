@@ -1,7 +1,5 @@
 #!/bin/sh
 
-export BACKGROUND_IMAGE="$HOME/.config/wallpapers/Touhou_Project/suika.jpg"
-
 swaybg --image $BACKGROUND_IMAGE --mode fill &
 mako &
 waybar &
