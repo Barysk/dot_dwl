@@ -50,6 +50,7 @@
 #include <wlr/types/wlr_session_lock_v1.h>
 #include <wlr/types/wlr_single_pixel_buffer_v1.h>
 #include <wlr/types/wlr_subcompositor.h>
+#include <wlr/types/wlr_tearing_control_v1.h>
 #include <wlr/types/wlr_viewporter.h>
 #include <wlr/types/wlr_virtual_keyboard_v1.h>
 #include <wlr/types/wlr_virtual_pointer_v1.h>
@@ -89,6 +90,11 @@ enum { LyrBg, LyrBottom, LyrTile, LyrFloat, LyrTop, LyrFS, LyrOverlay, LyrBlock,
 enum { NetWMWindowTypeDialog, NetWMWindowTypeSplash, NetWMWindowTypeToolbar,
 	NetWMWindowTypeUtility, NetLast }; /* EWMH atoms */
 #endif
+
+typedef struct ForceTearingRule {
+	const char* title;
+	const char* appid;
+} ForceTearingRule;
 
 typedef union {
 	int i;
@@ -135,6 +141,7 @@ typedef struct {
 #ifdef XWAYLAND
 	struct wl_listener activate;
 	struct wl_listener associate;
+	struct wl_listener minimize;
 	struct wl_listener dissociate;
 	struct wl_listener configure;
 	struct wl_listener set_hints;
@@ -143,6 +150,7 @@ typedef struct {
 	uint32_t tags;
 	int isfloating, isurgent, isfullscreen;
 	uint32_t resize; /* configure serial of a pending resize */
+	enum wp_tearing_control_v1_presentation_hint tearing_hint;
 } Client;
 
 typedef struct {
@@ -209,6 +217,7 @@ struct Monitor {
 	struct wlr_box w; /* window area, layout-relative */
 	struct wl_list layers[4]; /* LayerSurface.link */
 	const Layout *lt[2];
+	int gaps;
 	Pertag *pertag;
 	unsigned int seltags;
 	unsigned int sellt;
@@ -252,6 +261,17 @@ typedef struct {
 	struct wl_listener unlock;
 	struct wl_listener destroy;
 } SessionLock;
+
+typedef struct TearingController {
+	struct wlr_tearing_control_v1 *tearing_control;
+	struct wl_listener set_hint;
+	struct wl_listener destroy;
+} TearingController;
+
+typedef struct SendFrameDoneData {
+	struct timespec when;
+	struct Monitor *mon;
+} SendFrameDoneData;
 
 /* function declarations */
 static void applybounds(Client *c, struct wlr_box *bbox);
@@ -331,6 +351,7 @@ static void motionnotify(uint32_t time, struct wlr_input_device *device, double 
 		double sy, double sx_unaccel, double sy_unaccel);
 static void motionrelative(struct wl_listener *listener, void *data);
 static void moveresize(const Arg *arg);
+static int moncantear(Monitor* m);
 static void outputmgrapply(struct wl_listener *listener, void *data);
 static void outputmgrapplyortest(struct wlr_output_configuration_v1 *config, int test);
 static void outputmgrtest(struct wl_listener *listener, void *data);
@@ -345,6 +366,7 @@ static void requeststartdrag(struct wl_listener *listener, void *data);
 static void requestmonstate(struct wl_listener *listener, void *data);
 static void resize(Client *c, struct wlr_box geo, int interact);
 static void run(char *startup_cmd);
+static void sendframedoneiterator(struct wlr_scene_buffer *buffer, int x, int y, void *user_data);
 static void setcursor(struct wl_listener *listener, void *data);
 static void setcursorshape(struct wl_listener *listener, void *data);
 static void setfloating(Client *c, int floating);
@@ -360,10 +382,14 @@ static void spawn(const Arg *arg);
 static void startdrag(struct wl_listener *listener, void *data);
 static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
+static void tearingcontrollersethint(struct wl_listener *listener, void *data);
+static void tearingcontrollerdestroy(struct wl_listener *listener, void *data);
+static void tearingnewhint(struct wl_listener *listener, void *data);
 static void tile(Monitor *m);
 static void togglebar(const Arg *arg);
 static void togglefloating(const Arg *arg);
 static void togglefullscreen(const Arg *arg);
+static void togglegaps(const Arg *arg);
 static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
 static void unlocksession(struct wl_listener *listener, void *data);
@@ -427,6 +453,8 @@ static struct wlr_scene_rect *locked_bg;
 static struct wlr_session_lock_v1 *cur_lock;
 static struct wl_listener lock_listener = {.notify = locksession};
 
+static struct wlr_tearing_control_manager_v1 *tearing_control_v1;
+
 static struct wlr_seat *seat;
 static KeyboardGroup *kb_group;
 static unsigned int cursor_mode;
@@ -448,6 +476,7 @@ static void configurex11(struct wl_listener *listener, void *data);
 static void createnotifyx11(struct wl_listener *listener, void *data);
 static void dissociatex11(struct wl_listener *listener, void *data);
 static xcb_atom_t getatom(xcb_connection_t *xc, const char *name);
+static void minimizenotify(struct wl_listener *listener, void *data);
 static void sethints(struct wl_listener *listener, void *data);
 static void xwaylandready(struct wl_listener *listener, void *data);
 static struct wlr_xwayland *xwayland;
@@ -1041,6 +1070,8 @@ createmon(struct wl_listener *listener, void *data)
 
 	wlr_output_state_init(&state);
 	/* Initialize monitor state using configured rules */
+	m->gaps = gaps;
+
 	m->tagset[0] = m->tagset[1] = 1;
 	for (r = monrules; r < END(monrules); r++) {
 		if (!r->name || strstr(wlr_output->name, r->name)) {
@@ -1330,6 +1361,7 @@ destroynotify(struct wl_listener *listener, void *data)
 		wl_list_remove(&c->activate.link);
 		wl_list_remove(&c->associate.link);
 		wl_list_remove(&c->configure.link);
+		wl_list_remove(&c->minimize.link);
 		wl_list_remove(&c->dissociate.link);
 		wl_list_remove(&c->set_hints.link);
 	} else
@@ -1788,6 +1820,63 @@ handlesig(int signo)
 }
 
 void
+tearingcontrollersethint(struct wl_listener *listener, void *data)
+{
+	Client *c = NULL, *i = NULL;
+	TearingController *controller = wl_container_of(listener, controller, set_hint);
+
+	struct wlr_xdg_surface *surface = wlr_xdg_surface_try_from_wlr_surface(controller->tearing_control->surface);
+#ifdef XWAYLAND
+	struct wlr_xwayland_surface *xsurface = wlr_xwayland_surface_try_from_wlr_surface(controller->tearing_control->surface);
+#endif
+
+	wl_list_for_each(i, &fstack, flink) {
+		if (i->surface.xdg == surface
+#ifdef XWAYLAND
+				|| i->surface.xwayland == xsurface
+#endif
+		   ) {
+			c = i;
+			break;
+		}
+	}
+
+	if (c) {
+		enum wp_tearing_control_v1_presentation_hint hint = controller->tearing_control->current;
+		fprintf(
+			stderr, "TEARING: found surface: %p(appid: '%s', title: '%s'), hint: %d(%s)\n",
+			(void*)c, client_get_appid(c), client_get_title(c), hint, hint ? "ASYNC" : "VSYNC"
+		);
+		c->tearing_hint = controller->tearing_control->current;
+	}
+}
+
+void
+tearingcontrollerdestroy(struct wl_listener *listener, void *data)
+{
+	TearingController *controller = wl_container_of(listener, controller, destroy);
+
+	wl_list_remove(&controller->set_hint.link);
+	wl_list_remove(&controller->destroy.link);
+	free(controller);
+}
+
+void
+tearingnewhint(struct wl_listener *listener, void *data)
+{
+	struct wlr_tearing_control_v1 *tearing_control = data;
+	TearingController *controller = ecalloc(1, sizeof(*controller));
+
+	controller->tearing_control = tearing_control;
+
+	controller->set_hint.notify = tearingcontrollersethint;
+	wl_signal_add(&tearing_control->events.set_hint, &controller->set_hint);
+
+	controller->destroy.notify = tearingcontrollerdestroy;
+	wl_signal_add(&tearing_control->events.destroy, &controller->destroy);
+}
+
+void
 incnmaster(const Arg *arg)
 {
 	if (!arg || !selmon)
@@ -1954,6 +2043,35 @@ locksession(struct wl_listener *listener, void *data)
 	wlr_session_lock_v1_send_locked(session_lock);
 }
 
+static inline void
+forcetearingrule(Client *c)
+{
+	int success = 0;
+	const char* appid = client_get_appid(c);
+	const char* title = client_get_title(c);
+
+	for (unsigned i = 0; i < LENGTH(force_tearing); ++i) {
+		if (appid) {
+			if (strcmp(force_tearing[i].appid, appid) == 0) {
+				success = 1;
+				break;
+			}
+		}
+
+		if (title) {
+			if (strcmp(force_tearing[i].title, title) == 0) {
+				success = 1;
+				break;
+			}
+		}
+	}
+
+	if (success) {
+		c->tearing_hint = WP_TEARING_CONTROL_V1_PRESENTATION_HINT_ASYNC;
+		fprintf(stderr, "Forcing tearing for appid: '%s', title: '%s'\n", appid, title);
+	}
+}
+
 void
 mapnotify(struct wl_listener *listener, void *data)
 {
@@ -1962,6 +2080,8 @@ mapnotify(struct wl_listener *listener, void *data)
 	Client *w, *c = wl_container_of(listener, c, map);
 	Monitor *m;
 	int i;
+
+	forcetearingrule(c);
 
 	/* Create scene tree for this client and its border */
 	c->scene = client_surface(c)->data = wlr_scene_tree_create(layers[LyrTile]);
@@ -2254,6 +2374,13 @@ moveresize(const Arg *arg)
 		wlr_cursor_set_xcursor(cursor, cursor_mgr, "se-resize");
 		break;
 	}
+}
+
+int
+moncantear(Monitor* m)
+{
+	Client *c = focustop(m);
+	return (c && c->isfullscreen && c->tearing_hint); /* 1 == ASYNC */
 }
 
 void
@@ -2565,6 +2692,16 @@ run(char *startup_cmd)
 	 * loop configuration to listen to libinput events, DRM events, generate
 	 * frame events at the refresh rate, and so on. */
 	wl_display_run(dpy);
+}
+
+void
+sendframedoneiterator(struct wlr_scene_buffer *buffer, int x, int y, void *user_data)
+{
+	SendFrameDoneData *data = user_data;
+	if (buffer->primary_output != data->mon->scene_output)
+		return;
+
+	wlr_scene_buffer_send_frame_done(buffer, &data->when);
 }
 
 void
@@ -2925,6 +3062,9 @@ setup(void)
 
 	wl_global_create(dpy, &zdwl_ipc_manager_v2_interface, 2, NULL, dwl_ipc_manager_bind);
 
+	tearing_control_v1 = wlr_tearing_control_manager_v1_create(dpy, 1);
+	wl_signal_add(&tearing_control_v1->events.new_object, &tearing_control_new_object);
+
 	/* Make sure XWayland clients don't connect to the parent X server,
 	 * e.g when running in the x11 backend or the wayland backend and the
 	 * compositor has Xwayland support */
@@ -2991,7 +3131,7 @@ tagmon(const Arg *arg)
 void
 tile(Monitor *m)
 {
-	unsigned int mw, my, ty;
+	unsigned int h, r, e = m->gaps, mw, my, ty;
 	int i, n = 0;
 	Client *c;
 
@@ -3000,23 +3140,30 @@ tile(Monitor *m)
 			n++;
 	if (n == 0)
 		return;
+	if (smartgaps == n)
+		e = 0;
 
 	if (n > m->nmaster)
-		mw = m->nmaster ? (int)roundf(m->w.width * m->mfact) : 0;
+		mw = m->nmaster ? (int)roundf((m->w.width + gappx*e) * m->mfact) : 0;
 	else
 		mw = m->w.width;
-	i = my = ty = 0;
+	i = 0;
+	my = ty = gappx*e;
 	wl_list_for_each(c, &clients, link) {
 		if (!VISIBLEON(c, m) || c->isfloating || c->isfullscreen)
 			continue;
 		if (i < m->nmaster) {
-			resize(c, (struct wlr_box){.x = m->w.x, .y = m->w.y + my, .width = mw,
-				.height = (m->w.height - my) / (MIN(n, m->nmaster) - i)}, 0);
-			my += c->geom.height;
+			r = MIN(n, m->nmaster) - i;
+			h = (m->w.height - my - gappx*e - gappx*e * (r - 1)) / r;
+			resize(c, (struct wlr_box){.x = m->w.x + gappx*e, .y = m->w.y + my,
+				.width = mw - 2*gappx*e, .height = h}, 0);
+			my += c->geom.height + gappx*e;
 		} else {
+			r = n - i;
+			h = (m->w.height - ty - gappx*e - gappx*e * (r - 1)) / r;
 			resize(c, (struct wlr_box){.x = m->w.x + mw, .y = m->w.y + ty,
-				.width = m->w.width - mw, .height = (m->w.height - ty) / (n - i)}, 0);
-			ty += c->geom.height;
+				.width = m->w.width - mw - gappx*e, .height = h}, 0);
+			ty += c->geom.height + gappx*e;
 		}
 		i++;
 	}
@@ -3044,6 +3191,13 @@ togglefullscreen(const Arg *arg)
 	Client *sel = focustop(selmon);
 	if (sel)
 		setfullscreen(sel, !sel->isfullscreen);
+}
+
+void
+togglegaps(const Arg *arg)
+{
+	selmon->gaps = !selmon->gaps;
+	arrange(selmon);
 }
 
 void
@@ -3482,6 +3636,7 @@ createnotifyx11(struct wl_listener *listener, void *data)
 	LISTEN(&xsurface->events.destroy, &c->destroy, destroynotify);
 	LISTEN(&xsurface->events.dissociate, &c->dissociate, dissociatex11);
 	LISTEN(&xsurface->events.request_activate, &c->activate, activatex11);
+	LISTEN(&xsurface->events.request_minimize, &c->minimize, minimizenotify);
 	LISTEN(&xsurface->events.request_configure, &c->configure, configurex11);
 	LISTEN(&xsurface->events.request_fullscreen, &c->fullscreen, fullscreennotify);
 	LISTEN(&xsurface->events.set_hints, &c->set_hints, sethints);
@@ -3507,6 +3662,21 @@ getatom(xcb_connection_t *xc, const char *name)
 	free(reply);
 
 	return atom;
+}
+
+void
+minimizenotify(struct wl_listener *listener, void *data)
+{
+	Client *c = wl_container_of(listener, c, minimize);
+	struct wlr_xwayland_surface *xsurface = c->surface.xwayland;
+	struct wlr_xwayland_minimize_event *e = data;
+	int focused;
+
+	if (xsurface->surface == NULL || !xsurface->surface->mapped)
+		return;
+
+	focused = seat->keyboard_state.focused_surface == xsurface->surface;
+	wlr_xwayland_surface_set_minimized(xsurface, !focused && e->minimize);
 }
 
 void

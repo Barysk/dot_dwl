@@ -18,6 +18,7 @@ effect-greyscale
 #effect-pixelate=8
 
 text-ver=確認中
+text-clear=クリア
 text-wrong=正しくない
 
 indicator

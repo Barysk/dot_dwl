@@ -1,10 +1,73 @@
 --- dwl.c
 +++ dwl.c
-@@ -199,6 +199,7 @@ struct Monitor {
- 	struct wlr_box w; /* window area, layout-relative */
- 	struct wl_list layers[4]; /* LayerSurface.link */
- 	const Layout *lt[2];
-+	int gaps;
- 	unsigned int seltags;
- 	unsigned int sellt;
- 	uint32_t tagset[2];
+@@ -435,7 +410,6 @@ static struct wl_listener request_set_cursor_shape = {.notify = setcursorshape};
+ static struct wl_listener request_start_drag = {.notify = requeststartdrag};
+ static struct wl_listener start_drag = {.notify = startdrag};
+ static struct wl_listener new_session_lock = {.notify = locksession};
+-static struct wl_listener tearing_control_new_object = {.notify = tearingnewhint};
+ 
+ #ifdef XWAYLAND
+ static void activatex11(struct wl_listener *listener, void *data);
+@@ -780,7 +754,6 @@ cleanuplisteners(void)
+ 	wl_list_remove(&request_start_drag.link);
+ 	wl_list_remove(&start_drag.link);
+ 	wl_list_remove(&new_session_lock.link);
+-	wl_list_remove(&tearing_control_new_object.link);
+ #ifdef XWAYLAND
+ 	wl_list_remove(&new_xwayland_surface.link);
+ 	wl_list_remove(&xwayland_ready.link);
+@@ -2149,40 +2027,27 @@ quit(const Arg *arg)
+ void
+ rendermon(struct wl_listener *listener, void *data)
+ {
++	/* This function is called every time an output is ready to display a frame,
++	 * generally at the output's refresh rate (e.g. 60Hz). */
+ 	Monitor *m = wl_container_of(listener, m, frame);
+-	struct wlr_scene_output *scene_output = m->scene_output;
++	Client *c;
+ 	struct wlr_output_state pending = {0};
+-	SendFrameDoneData frame_done_data = {0};
++	struct timespec now;
+ 
+-	m->wlr_output->frame_pending = false;
+-
+-	if (!wlr_scene_output_needs_frame(scene_output)) {
+-		goto skip;
++	/* Render if no XDG clients have an outstanding resize and are visible on
++	 * this monitor. */
++	wl_list_for_each(c, &clients, link) {
++		if (c->resize && !c->isfloating && client_is_rendered_on_mon(c, m) && !client_is_stopped(c))
++			goto skip;
+ 	}
+ 
+-	wlr_output_state_init(&pending);
+-	if (!wlr_scene_output_build_state(m->scene_output, &pending, NULL)) {
+-		goto skip;
+-	}
+-
+-	if (tearing_allowed && moncantear(m)) {
+-		pending.tearing_page_flip = true;
+-
+-		if (!wlr_output_test_state(m->wlr_output, &pending)) {
+-			fprintf(stderr, "Output test failed on '%s', retrying without tearing page-flip\n", m->wlr_output->name);
+-			pending.tearing_page_flip = false;
+-		}
+-	}
+-
+-	if (!wlr_output_commit_state(m->wlr_output, &pending))
+-		fprintf(stderr, "Page-flip failed on output %s", m->wlr_output->name);
++	wlr_scene_output_commit(m->scene_output, NULL);
+ 
++skip:
++	/* Let clients know a frame has been rendered */
++	clock_gettime(CLOCK_MONOTONIC, &now);
++	wlr_scene_output_send_frame_done(m->scene_output, &now);
+ 	wlr_output_state_finish(&pending);
+-
+-skip:
+-	clock_gettime(CLOCK_MONOTONIC, &frame_done_data.when);
+-	frame_done_data.mon = m;
+-	wlr_scene_output_for_each_buffer(m->scene_output, sendframedoneiterator, &frame_done_data);
+ }
+ 
+ void
