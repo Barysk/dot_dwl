@@ -1,8 +1,8 @@
 #!/bin/sh
 
 
-echo "Installing wlroots 0.18" # is needed to compile dwl 0.7
-sudo pacman -S wlroots0.18 --needed
+echo "Installing dependencies for dwl compilation"
+sudo pacman -S libinput wayland wlroots0.18 libxkbcommon wayland-protocols pkgconf libxcb xcb-util xorg-xwayland xcb-util-wm --needed
 
 
 echo "Deploying dot_dwl configs"

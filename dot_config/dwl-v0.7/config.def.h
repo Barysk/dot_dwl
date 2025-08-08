@@ -147,8 +147,7 @@ static const char *mdprev[] = { "sh", "-c", "playerctl previous", NULL };
 
 // misc
 static const char *lckscr[] = { "swaylock", NULL };
-static const char *scrshot[] = { "sh", "-c", "hyprshot -z -s -m region -o ~/Pictures/screenshots/", NULL }; // TODO: replace with grim and slurp
-
+static const char *scrshot[] = { "sh", "-c", "$HOME/.config/dwl_scripts/wayscr", NULL };
 
 static const Key keys[] = {
 	/* Note that Shift changes certain key codes: c -> C, 2 -> at, etc. */

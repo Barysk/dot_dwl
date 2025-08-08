@@ -8,8 +8,8 @@ static const int sloppyfocus               = 1;  /* focus follows mouse */
 static const int bypass_surface_visibility = 0;  /* 1 means idle inhibitors will disable idle tracking even if it's surface isn't visible  */
 static const int smartgaps                 = 0;  /* 1 means no outer gap when there is only one window */
 static int gaps                            = 1;  /* 1 means gaps between windows are added */
-static const unsigned int gappx            = 10; /* gap pixel between windows */
-static const unsigned int borderpx         = 1;  /* border pixel of windows */
+static const unsigned int gappx            = 8;  /* gap pixel between windows */
+static const unsigned int borderpx         = 0;  /* border pixel of windows */
 static const float rootcolor[]             = COLOR(0x222222ff);
 static const float bordercolor[]           = COLOR(0x444444ff);
 static const float focuscolor[]            = COLOR(0x005577ff);
@@ -55,11 +55,13 @@ static const MonitorRule monrules[] = {
 
 /* keyboard */
 static const struct xkb_rule_names xkb_rules = {
+	.variant = "legacy,legacy",
+	.layout = "pl,by",
+	.options = "grp:lalt_lshift_toggle",
 	/* can specify fields: rules, model, layout, variant, options */
 	/* example:
 	.options = "ctrl:nocaps",
 	*/
-	.options = NULL,
 };
 
 static const int repeat_rate = 25;
@@ -144,9 +146,8 @@ static const char *mdnext[] = { "sh", "-c", "playerctl next", NULL };
 static const char *mdprev[] = { "sh", "-c", "playerctl previous", NULL };
 
 // misc
-static const char *lckscr[] = { "hyprlock", NULL }; // TODO: change to swaylock
-static const char *scrshot[] = { "sh", "-c", "hyprshot -z -s -m region -o ~/Pictures/screenshots/", NULL }; // TODO: replace with grim and slurp
-
+static const char *lckscr[] = { "swaylock", NULL };
+static const char *scrshot[] = { "sh", "-c", "$HOME/.config/dwl_scripts/wayscr", NULL };
 
 static const Key keys[] = {
 	/* Note that Shift changes certain key codes: c -> C, 2 -> at, etc. */
@@ -157,13 +158,13 @@ static const Key keys[] = {
 	{ MODKEY,                    XKB_KEY_t,                     spawn,            {.v = msgcmd} },
 	{ MODKEY,                    XKB_KEY_b,                     spawn,            {.v = brwsrcmd} },
 
-	{ MODKEY,                    XKB_KEY_XF86AudioRaiseVolume,  spawn,            {.v = vlup} },
-	{ MODKEY,                    XKB_KEY_XF86AudioLowerVolume,  spawn,            {.v = vldown} },
-	{ MODKEY,                    XKB_KEY_XF86AudioMute,         spawn,            {.v = vlmute} },
-	{ MODKEY,                    XKB_KEY_XF86AudioMicMute,      spawn,            {.v = micmute} },
+	{ 0,                         XKB_KEY_XF86AudioRaiseVolume,  spawn,            {.v = vlup} },
+	{ 0,                         XKB_KEY_XF86AudioLowerVolume,  spawn,            {.v = vldown} },
+	{ 0,                         XKB_KEY_XF86AudioMute,         spawn,            {.v = vlmute} },
+	{ 0,                         XKB_KEY_XF86AudioMicMute,      spawn,            {.v = micmute} },
 
-	{ MODKEY,                    XKB_KEY_XF86MonBrightnessUp,   spawn,            {.v = brup} },
-	{ MODKEY,                    XKB_KEY_XF86MonBrightnessDown, spawn,            {.v = brdown} },
+	{ 0,                         XKB_KEY_XF86MonBrightnessUp,   spawn,            {.v = brup} },
+	{ 0,                         XKB_KEY_XF86MonBrightnessDown, spawn,            {.v = brdown} },
 
 	{ MODKEY,                    XKB_KEY_space,                 spawn,            {.v = mdpause} },
 	{ MODKEY,                    XKB_KEY_Right,                 spawn,            {.v = mdnext} },
@@ -177,7 +178,7 @@ static const Key keys[] = {
 
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_B,                     togglebar,        {0} },
 
-	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_g,                     togglegaps,       {0} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_plus,                  togglegaps,       {0} },
 
 	{ MODKEY,                    XKB_KEY_j,                     focusstack,       {.i = +1} },
 	{ MODKEY,                    XKB_KEY_k,                     focusstack,       {.i = -1} },

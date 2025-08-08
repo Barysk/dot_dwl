@@ -14,6 +14,6 @@ export BROWSER="brave"
 alias ls='ls --color=auto'
 alias grep='grep --color=auto'
 alias nv='nvim .'
-alias startw='$HOME/.config/dwl_start/start_dwl'
+alias startw='$HOME/.config/dwl_scripts/start_dwl'
 
 PS1='\n  ┌─[ \[\033[36m\]\W\[\033[37m\] ]\n  └─> '

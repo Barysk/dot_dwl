@@ -61,4 +61,4 @@ export GTK_THEME="Materia-dark-compact"
 ### RIVER ###
 #############
 
-exec dwl -s $HOME/.config/dwl_start/autostart
+exec dwl -s $HOME/.config/dwl_scripts/autostart
